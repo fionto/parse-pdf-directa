@@ -9,36 +9,45 @@ Example:
     cache = CACHE_PATH.read_text()
 """
 
-
 from pathlib import Path
 from dotenv import load_dotenv
 import os
 
+
 # Phase A: Locate & Load
 # =======================
-PROJECT_ROOT = Path(__file__).resolve().parents[2]
-load_dotenv(PROJECT_ROOT / ".env")
+PROJECT_ROOT: Path = Path(__file__).resolve().parents[2]
+env_file = PROJECT_ROOT / ".env"
+
+# Fail if .env doesn't exist
+if not env_file.exists():
+    raise FileNotFoundError(
+        f".env file not found at {env_file}\n"
+    )
+# python-dotenv library is used to load into the environment
+load_dotenv(env_file)
 
 
 # Phase B: Read & Cast
 # ====================
-# Read paths as strings, then convert to Path
-data_dir_str = os.environ.get("DATA_DIR", "data")
-pdf_path_str = os.environ.get("PDF_PATH", "data/estratto.pdf")
-cache_path_str = os.environ.get("CACHE_PATH", "data/isin_cache.json")
-map_path_str = os.environ.get("MAP_PATH", "data/isin_map.json")
+# Helper function for path validation
+def _resolve_path(env_var: str, default: str) -> Path:
+    """Resolve a path from env var: absolute paths pass through, relative paths join to PROJECT_ROOT."""
+    raw = os.environ.get(env_var, default)
+    p = Path(raw)
+    return p if p.is_absolute() else PROJECT_ROOT / p
 
-# Convert to Path objects (relative to PROJECT_ROOT)
-DATA_DIR = PROJECT_ROOT / data_dir_str
-PDF_PATH = PROJECT_ROOT / pdf_path_str
-CACHE_PATH = PROJECT_ROOT / cache_path_str
-MAP_PATH = PROJECT_ROOT / map_path_str
+# Convert to Path objects
+DATA_DIR : Path = _resolve_path("DATA_DIR", "data")
+PDF_PATH : Path = _resolve_path("PDF_PATH", "data/estratto.pdf")
+CACHE_PATH : Path = _resolve_path("CACHE_PATH", "data/isin_cache.json")
+MAP_PATH : Path = _resolve_path("MAP_PATH", "data/isin_map.json")
 
 # Read numeric values and cast immediately
-figi_batch_size_str = os.environ.get("FIGI_BATCH_SIZE", "10")
-figi_sleep_sec_str = os.environ.get("FIGI_SLEEP_SEC", "2.5")
-FIGI_BATCH_SIZE = int(figi_batch_size_str)
-FIGI_SLEEP_SEC = float(figi_sleep_sec_str)
+_figi_batch_size_str = os.environ.get("FIGI_BATCH_SIZE", "10")
+_figi_sleep_sec_str = os.environ.get("FIGI_SLEEP_SEC", "2.5")
+FIGI_BATCH_SIZE : int = int(_figi_batch_size_str)
+FIGI_SLEEP_SEC : float = float(_figi_sleep_sec_str)
 
 # Read string values directly
 FIGI_URL = os.environ.get("FIGI_URL", "https://api.openfigi.com/v3/mapping")
@@ -68,34 +77,75 @@ if not FIGI_URL:
 # Create directories if they don't exist
 try:
     DATA_DIR.mkdir(parents=True, exist_ok=True)
-except Exception as e:
+except PermissionError as e:
     raise ValueError(
-        f"Cannot create DATA_DIR at {DATA_DIR}: {e}"
-    )
+        f"Permission denied: Cannot create DATA_DIR at {DATA_DIR}. "
+        f"Check that you have write permission."
+    ) from e
+except NotADirectoryError as e:
+    raise ValueError(
+        f"Path error: A parent of DATA_DIR exists but is not a directory: {DATA_DIR}. "
+        f"Check your DATA_DIR path in .env."
+    ) from e
+except OSError as e:
+    # Catches other OS errors: symlink loops, disk full, etc.
+    raise ValueError(
+        f"OS error creating DATA_DIR at {DATA_DIR}: {e}"
+    ) from e
 
 # Ensure parent directory for pdf exists
 try:
     PDF_PATH.parent.mkdir(parents=True, exist_ok=True)
-except Exception as e:
+except PermissionError as e:
     raise ValueError(
-        f"Cannot create parent directory for PDF_PATH: {e}"
-    )
+        f"Permission denied: Cannot create parent directory for PDF_PATH"
+        f"Check that you have write permission to {PDF_PATH.parent.parent}"
+    ) from e
+except NotADirectoryError as e:
+    raise ValueError(
+        f"Path error: A parent of PDF_PATH exists but is not a directory. "
+        f"Check your PDF_PATH path in .env."
+    ) from e
+except OSError as e:
+    raise ValueError(
+        f"OS error creating PDF_PATH parent directory: {e}"
+    ) from e
 
 # Ensure parent directory for cache exists
 try:
     CACHE_PATH.parent.mkdir(parents=True, exist_ok=True)
-except Exception as e:
+except PermissionError as e:
     raise ValueError(
-        f"Cannot create parent directory for CACHE_PATH: {e}"
-    )
+        f"Permission denied: Cannot create parent directory for CACHE_PATH. "
+        f"Check that you have write permission to {CACHE_PATH.parent.parent}."
+    ) from e
+except NotADirectoryError as e:
+    raise ValueError(
+        f"Path error: A parent of CACHE_PATH exists but is not a directory. "
+        f"Check your CACHE_PATH path in .env."
+    ) from e
+except OSError as e:
+    raise ValueError(
+        f"OS error creating CACHE_PATH parent directory: {e}"
+    ) from e
 
-# Ensure parent directory for map exists
 try:
     MAP_PATH.parent.mkdir(parents=True, exist_ok=True)
-except Exception as e:
+except PermissionError as e:
     raise ValueError(
-        f"Cannot create parent directory for MAP_PATH: {e}"
-    )
+        f"Permission denied: Cannot create parent directory for MAP_PATH. "
+        f"Check that you have write permission to {MAP_PATH.parent.parent}."
+    ) from e
+except NotADirectoryError as e:
+    raise ValueError(
+        f"Path error: A parent of MAP_PATH exists but is not a directory. "
+        f"Check your MAP_PATH path in .env."
+    ) from e
+except OSError as e:
+    raise ValueError(
+        f"OS error creating MAP_PATH parent directory: {e}"
+    ) from e
+
 
 # Phase D: Export Interface
 # ==========================
@@ -105,6 +155,7 @@ except Exception as e:
 __all__ = [
     "PROJECT_ROOT",
     "DATA_DIR",
+    "PDF_PATH",
     "CACHE_PATH",
     "MAP_PATH",
     "FIGI_URL",
