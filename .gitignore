@@ -1,0 +1,26 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# IDEs / editors
+.vscode/
+
+# Environment variables / secrets
+.env
+.env.*
+*.pem
+*.key
+
+# =========================
+# Local real data
+# =========================
+.real_data/
