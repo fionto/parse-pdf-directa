@@ -40,20 +40,27 @@ class PortfolioEntry:
 
 def it_to_float(s: str) -> float:
     """
-    Convert Italian-formatted number (e.g., '6.196,76') to float.
-
     Parameters
     ----------
     s : str
-        A string representing a number in Italian format (e.g., '1.234,56')
-
+        A string representing a number in Italian format.
+        Thousands separator: '.' | Decimal separator: ','
+    
     Returns
     -------
     float
-        the converted value of the string after converting from a
-        'comma-dot' notation
+        The converted numeric value.
+    
+    Raises
+    ------
+    ValueError
+        If s is empty, contains invalid characters, or cannot be parsed.
     """
-    pass
+    
+    if not s or not s.strip():
+        raise ValueError(f"Cannot convert empty string to float")
+    
+    
 
 
 def extract_portfolio_entries(pdf_path: Path) -> list[PortfolioEntry]:
